@@ -1,0 +1,39 @@
+services:
+  fishflow-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fishflow-backend
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - fishflow-net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  fishflow-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fishflow-frontend
+    restart: unless-stopped
+    ports:
+      - "${FISHFLOW_PORT:-8080}:80"
+    depends_on:
+      - fishflow-backend
+    networks:
+      - fishflow-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  fishflow-net:
+    name: fishflow-net
+    driver: bridge
