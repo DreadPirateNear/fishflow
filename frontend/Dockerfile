@@ -7,8 +7,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-# Ensure clean Linux binaries
-RUN rm -rf node_modules dist && npm install && npm run build
+RUN npm run build
 
 # Stage 2: Serve with Nginx Alpine & Internal Reverse Proxy
 FROM nginx:alpine
