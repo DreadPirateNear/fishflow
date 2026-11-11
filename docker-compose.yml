@@ -1,8 +1,6 @@
 services:
   fishflow-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/dreadpiratenear/fishflow-backend:v1.0.0
     container_name: fishflow-backend
     restart: unless-stopped
     environment:
@@ -16,9 +14,7 @@ services:
       retries: 3
 
   fishflow-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/dreadpiratenear/fishflow-frontend:v1.0.0
     container_name: fishflow-frontend
     restart: unless-stopped
     ports:

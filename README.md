@@ -170,7 +170,7 @@ Ideal for self-hosters and servers (Portainer, Dockge, CasaOS, Unraid, TrueNAS, 
 
 3. **Launch the stack**:
    ```bash
-   docker compose up -d --build
+   docker compose up -d
    ```
 
    The web interface is immediately available at `http://localhost:8080` (or `http://your-server-ip:8080`).
