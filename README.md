@@ -13,7 +13,8 @@
 <p align="center">
   <a href="#-key-features"><img src="https://img.shields.io/badge/Status-Production%20Ready-emerald?style=for-the-badge" alt="Status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT" /></a>
-  <a href="#-quickstart-with-docker-compose"><img src="https://img.shields.io/badge/Docker-Compose%20Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
+  <a href="#-installation--deployment"><img src="https://img.shields.io/badge/Docker-Compose%20Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
+  <a href="https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow-backend"><img src="https://img.shields.io/badge/GHCR-Pre--built%20Images-blue?style=for-the-badge&logo=github" alt="GHCR" /></a>
   <a href="#-local-development"><img src="https://img.shields.io/badge/FastAPI-Python%203.12-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
   <a href="#-local-development"><img src="https://img.shields.io/badge/Vue.js-3.5%20%2B%20Vite-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3" /></a>
 </p>
@@ -27,7 +28,7 @@
 - [Scoring Algorithm](#-scientific-solunar-scoring-algorithm)
 - [Architecture](#-architecture)
 - [Installation & Deployment](#-installation--deployment)
-  - [Method 1: From GitHub Release (Recommended for Homelab)](#method-1-from-github-release-recommended-for-homelab)
+  - [Method 1: Pre-built Docker Compose (Recommended for Homelab)](#method-1-pre-built-docker-compose-recommended-for-homelab)
   - [Method 2: From Source with Git (Developers)](#method-2-from-source-with-git-developers)
 - [Homelab Reverse Proxy Configuration](#-homelab-reverse-proxy-configuration)
 - [Local Development](#-local-development)
@@ -149,37 +150,47 @@ $$\text{Activity Score} = 0.35 \times S_{\text{solunar}} + 0.35 \times S_{\text{
 
 ---
 
-### Method 1: From GitHub Release (Recommended for Homelab)
+### Method 1: Pre-built Docker Compose (Recommended for Homelab)
 
-Ideal for self-hosters and servers (Portainer, Dockge, CasaOS, Unraid, TrueNAS, Raspberry Pi). You don't need to clone the entire Git repository or development history.
+Ideal for self-hosters and home servers (Portainer, Dockge, CasaOS, Unraid, TrueNAS, Raspberry Pi). Official images are pre-compiled and served directly from GitHub Container Registry (`ghcr.io`), eliminating local build times and compiler toolchains.
 
-1. **Download and extract the latest release archive**:
-   ```bash
-   # Create application directory
-   mkdir -p fishflow && cd fishflow
+#### Option A: Quickstart with Single Compose File
+```bash
+# Create application directory
+mkdir -p fishflow && cd fishflow
 
-   # Download and extract the latest release package
-   curl -sL https://github.com/DreadPirateNear/fishflow/archive/refs/tags/v1.0.0.tar.gz | tar -xz --strip-components=1
-   ```
+# Download production docker-compose.yml
+curl -sLO https://raw.githubusercontent.com/DreadPirateNear/fishflow/master/docker-compose.yml
 
-2. **Configure Port (Optional)**:
-   ```bash
-   cp .env.example .env
-   # Edit FISHFLOW_PORT in .env if desired (default is 8080)
-   ```
+# Optional: configure port (default is 8080)
+# echo "FISHFLOW_PORT=8080" > .env
 
-3. **Launch the stack**:
-   ```bash
-   docker compose up -d
-   ```
+# Launch the stack
+docker compose up -d
+```
 
-   The web interface is immediately available at `http://localhost:8080` (or `http://your-server-ip:8080`).
+#### Option B: From GitHub Release
+```bash
+# Create application directory
+mkdir -p fishflow && cd fishflow
+
+# Download and extract the latest release package
+curl -sL https://github.com/DreadPirateNear/fishflow/archive/refs/tags/v1.0.0.tar.gz | tar -xz --strip-components=1
+
+# Configure Port (Optional)
+cp .env.example .env
+
+# Launch the stack
+docker compose up -d
+```
+
+The web interface is immediately available at `http://localhost:8080` (or `http://your-server-ip:8080`).
 
 ---
 
 ### Method 2: From Source with Git (Developers)
 
-For developers who want to inspect the source code or contribute:
+For developers who want to inspect the source code, modify algorithms, or build images locally:
 
 ```bash
 # Clone the repository
@@ -189,8 +200,12 @@ cd fishflow
 # Optional environment setup
 cp .env.example .env
 
-# Build and start container stack
-docker compose up -d --build
+# Build local container images
+docker build -t ghcr.io/dreadpiratenear/fishflow-backend:v1.0.0 ./backend
+docker build -t ghcr.io/dreadpiratenear/fishflow-frontend:v1.0.0 ./frontend
+
+# Start container stack
+docker compose up -d
 ```
 
 Access the application in your browser:
@@ -283,7 +298,7 @@ http://localhost:8000/docs
 
 - **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [Python 3.12](https://www.python.org/), [PyEphem](https://rhodesmill.org/pyephem/), [HTTPX](https://www.python-httpx.org/), [Pydantic v2](https://docs.pydantic.dev/).
 - **Frontend**: [Vue.js 3 (Composition API)](https://vuejs.org/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/), [Chart.js](https://www.chartjs.org/), [Leaflet](https://leafletjs.com/), [Lucide Icons](https://lucide.dev/).
-- **Deployment**: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), [Nginx Alpine](https://nginx.org/).
+- **Deployment**: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), [GitHub Container Registry (GHCR)](https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow-backend), [GitHub Actions CI/CD](https://github.com/features/actions), [Nginx Alpine](https://nginx.org/).
 - **Data Providers**: [Open-Meteo Weather & Marine API](https://open-meteo.com/), [Esri World Imagery](https://www.esri.com/).
 
 ---
