@@ -14,7 +14,7 @@
   <a href="#-key-features"><img src="https://img.shields.io/badge/Status-Production%20Ready-emerald?style=for-the-badge" alt="Status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT" /></a>
   <a href="#-installation--deployment"><img src="https://img.shields.io/badge/Docker-Compose%20Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
-  <a href="https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow-backend"><img src="https://img.shields.io/badge/GHCR-Pre--built%20Images-blue?style=for-the-badge&logo=github" alt="GHCR" /></a>
+  <a href="https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow"><img src="https://img.shields.io/badge/GHCR-Pre--built%20Image-blue?style=for-the-badge&logo=github" alt="GHCR" /></a>
   <a href="#-local-development"><img src="https://img.shields.io/badge/FastAPI-Python%203.12-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
   <a href="#-local-development"><img src="https://img.shields.io/badge/Vue.js-3.5%20%2B%20Vite-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3" /></a>
 </p>
@@ -120,27 +120,20 @@ $$\text{Activity Score} = 0.35 \times S_{\text{solunar}} + 0.35 \times S_{\text{
                                  │
                     Forward to Host Port 8080
                                  │
-     Docker Network: fishflow-net│
-     ┌───────────────────────────┴────────────────────────────┐
-     │                                                        │
-     │  ┌───────────────────────────┐                         │
-     │  │ fishflow-frontend:80      │ (Exposes Port 8080:80)  │
-     │  │ • Nginx Alpine            │                         │
-     │  │ • Vue 3 + Vite SPA (HTML5)│                         │
-     │  │ • Internal proxy for /api │                         │
-     │  └─────────────┬─────────────┘                         │
-     │                │ Transparent Proxy Pass (/api/*)       │
-     │                ▼                                       │
-     │  ┌───────────────────────────┐                         │
-     │  │ fishflow-backend:8000     │ (Internal Network Only) │
-     │  │ • FastAPI (Python 3.12)   │                         │
-     │  │ • PyEphem Engine (Offline)│                         │
-     │  │ • Open-Meteo HTTP Client  │                         │
-     │  └───────────────────────────┘                         │
-     │                                                        │
-     └────────────────────────────────────────────────────────┘
+                                 ▼
+      ┌────────────────────────────────────────────────────────┐
+      │  fishflow (Single Multi-Stage Container)               │
+      │  Port 8080                                             │
+      │  ┌──────────────────────────────────────────────────┐  │
+      │  │ FastAPI Server (Python 3.12 + Uvicorn)           │  │
+      │  │ • API Router (/api/v1/*, /health, /docs)         │  │
+      │  │ • Static SPA Mount (Vue 3 + Vite HTML5 assets)   │  │
+      │  │ • Offline-Resilient Solunar Engine (PyEphem)     │  │
+      │  │ • Bounded Nominatim LRU Geocoding Cache          │  │
+      │  │ • Open-Meteo Weather & Marine API Client         │  │
+      │  └──────────────────────────────────────────────────┘  │
+      └────────────────────────────────────────────────────────┘
 ```
-
 ---
 
 ## 🚀 Installation & Deployment
@@ -175,7 +168,7 @@ docker compose up -d
 mkdir -p fishflow && cd fishflow
 
 # Download and extract the latest release package
-curl -sL https://github.com/DreadPirateNear/fishflow/archive/refs/tags/v1.0.0.tar.gz | tar -xz --strip-components=1
+curl -sL https://github.com/DreadPirateNear/fishflow/archive/refs/tags/v1.1.0.tar.gz | tar -xz --strip-components=1
 
 # Configure Port (Optional)
 cp .env.example .env
@@ -200,9 +193,8 @@ cd fishflow
 # Optional environment setup
 cp .env.example .env
 
-# Build local container images
-docker build -t ghcr.io/dreadpiratenear/fishflow-backend:v1.0.0 ./backend
-docker build -t ghcr.io/dreadpiratenear/fishflow-frontend:v1.0.0 ./frontend
+# Build unified local container image
+docker build -t ghcr.io/dreadpiratenear/fishflow:v1.1.0 .
 
 # Start container stack
 docker compose up -d
@@ -235,11 +227,11 @@ fishing.yourdomain.com {
 ### Traefik
 ```yaml
 services:
-  fishflow-frontend:
+  fishflow:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.fishflow.rule=Host(`fishing.yourdomain.com`)"
-      - "traefik.http.services.fishflow.loadbalancer.server.port=80"
+      - "traefik.http.services.fishflow.loadbalancer.server.port=8080"
 ```
 
 ---
@@ -289,7 +281,7 @@ The backend provides a documented REST API:
 
 Interactive OpenAPI documentation is available at:
 ```
-http://localhost:8000/docs
+http://localhost:8080/docs
 ```
 
 ---
@@ -298,7 +290,7 @@ http://localhost:8000/docs
 
 - **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [Python 3.12](https://www.python.org/), [PyEphem](https://rhodesmill.org/pyephem/), [HTTPX](https://www.python-httpx.org/), [Pydantic v2](https://docs.pydantic.dev/).
 - **Frontend**: [Vue.js 3 (Composition API)](https://vuejs.org/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/), [Chart.js](https://www.chartjs.org/), [Leaflet](https://leafletjs.com/), [Lucide Icons](https://lucide.dev/).
-- **Deployment**: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), [GitHub Container Registry (GHCR)](https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow-backend), [GitHub Actions CI/CD](https://github.com/features/actions), [Nginx Alpine](https://nginx.org/).
+- **Deployment**: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), [GitHub Container Registry (GHCR)](https://github.com/DreadPirateNear/fishflow/pkgs/container/fishflow), [GitHub Actions CI/CD](https://github.com/features/actions), Single Multi-Stage Container (FastAPI + Vue 3).
 - **Data Providers**: [Open-Meteo Weather & Marine API](https://open-meteo.com/), [Esri World Imagery](https://www.esri.com/).
 
 ---

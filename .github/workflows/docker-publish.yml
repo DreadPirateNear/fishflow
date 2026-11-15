@@ -1,4 +1,4 @@
-name: Publish Docker Images
+name: Publish Docker Image
 
 on:
   push:
@@ -12,21 +12,11 @@ env:
 
 jobs:
   build-and-push:
-    name: Build and Push ${{ matrix.component }}
+    name: Build and Push Unified Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - component: backend
-            image: ghcr.io/dreadpiratenear/fishflow-backend
-            context: ./backend
-          - component: frontend
-            image: ghcr.io/dreadpiratenear/fishflow-frontend
-            context: ./frontend
 
     steps:
       - name: Checkout repository
@@ -49,7 +39,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -59,10 +49,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: .
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
