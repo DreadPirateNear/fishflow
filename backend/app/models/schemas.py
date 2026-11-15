@@ -80,6 +80,8 @@ class HourlyActivity(BaseModel):
     uv_index: Optional[float] = None
     weather_code: int
     wave_height: Optional[float] = None
+    wave_period: Optional[float] = None
+    wave_direction: Optional[float] = None
     is_major_window: bool = False
     is_minor_window: bool = False
 
@@ -95,6 +97,9 @@ class ForecastResponse(BaseModel):
     solunar: SolunarData
     weather_current: WeatherData
     marine: Optional[MarineData] = None
+    is_offline: bool = False
+    utc_offset_hours: Optional[float] = None
+    timezone: Optional[str] = None
 
 
 class DaySummary(BaseModel):
@@ -142,5 +147,3 @@ class AutoLocationResponse(BaseModel):
     latitude: float
     longitude: float
     is_marine: bool = True
-
-

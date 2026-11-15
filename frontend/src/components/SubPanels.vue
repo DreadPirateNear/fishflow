@@ -181,224 +181,177 @@ const tideChartData = computed(() => {
     <!-- ==================== TAB 2: MAREE & ONDE (UNIFIED & COMPACT) ==================== -->
     <div v-if="subTab === 'marine'" class="space-y-3">
       
-      <!-- Top Row: Sea Conditions & Waves side-by-side in 2 Columns -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <!-- Marine: Sea Temp & Currents -->
-        <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col justify-between">
-          <div class="flex items-center gap-2 mb-2">
-            <Waves class="w-4 h-4 text-sky-400" />
-            <span class="text-xs font-bold text-white uppercase tracking-wider">{{ t('marine_conditions') }}</span>
+      <!-- Inland Water Warning / Info Card when spot is not marine -->
+      <div v-if="!marine || !marine.is_marine" class="bg-white/5 border border-white/10 rounded-2xl p-4 text-center space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+          <Waves class="w-6 h-6 text-emerald-400" />
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ t('inland_water') }}</h3>
+          <p class="text-xs text-white/60 mt-1 max-w-md mx-auto">
+            {{ t('inland_water_desc') }}
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto text-left pt-2 border-t border-white/5">
+          <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
+            <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('temperature') }}</span>
+            <span class="text-base font-black text-white mt-0.5 block">{{ Math.round(weather.temperature_2m || 16) }}°C</span>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
-              <div>
-                <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('sea_temperature') }}</span>
-                <span class="text-xl font-black text-white mt-0.5 block">
-                  {{ marine?.sea_surface_temperature !== null && marine?.sea_surface_temperature !== undefined ? marine.sea_surface_temperature : 18.4 }}°
-                </span>
-              </div>
-              <div class="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center border border-sky-500/20">
-                <Thermometer class="w-4 h-4 text-sky-400" />
+          <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
+            <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('pressure') }}</span>
+            <span class="text-base font-black text-white mt-0.5 block">{{ Math.round(weather.surface_pressure || 1013) }} hPa</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marine Dashboard: Shown only when spot is coastal / marine -->
+      <template v-else>
+        <!-- Top Row: Sea Conditions & Waves side-by-side in 2 Columns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Marine: Sea Temp -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col justify-between">
+            <div class="flex items-center gap-2 mb-2">
+              <Waves class="w-4 h-4 text-sky-400" />
+              <span class="text-xs font-bold text-white uppercase tracking-wider">{{ t('marine_conditions') }}</span>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
+                <div>
+                  <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('sea_temperature') }}</span>
+                  <span class="text-xl font-black text-white mt-0.5 block">
+                    {{ marine.sea_surface_temperature !== null && marine.sea_surface_temperature !== undefined ? marine.sea_surface_temperature : '--' }}°C
+                  </span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center border border-sky-500/20">
+                  <Thermometer class="w-4 h-4 text-sky-400" />
+                </div>
               </div>
             </div>
-            <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
-              <div>
-                <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('currents') }}</span>
-                <span class="text-base font-black text-white mt-0.5 block">0,1 m/s</span>
-                <span class="text-[9px] text-sky-300 font-semibold block">279° W</span>
+          </div>
+
+          <!-- Waves: Moto Ondoso -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <Waves class="w-4 h-4 text-sky-400" />
+                <span class="text-xs font-bold text-white uppercase tracking-wider">{{ t('wave_conditions') }}</span>
               </div>
-              <div class="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center border border-sky-500/20" style="transform: rotate(279deg);">
-                <Navigation class="w-4 h-4 text-sky-400" />
+              <span class="text-[9px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 font-semibold border border-sky-400/20">
+                Open-Meteo Marine
+              </span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center bg-black/30 p-2.5 rounded-xl border border-white/5">
+              <div>
+                <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_height') }}</span>
+                <span class="text-lg font-black text-white mt-0.5 block">
+                  {{ marine.wave_height !== null && marine.wave_height !== undefined ? marine.wave_height : '--' }} m
+                </span>
+              </div>
+              <div>
+                <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_period') }}</span>
+                <span class="text-lg font-black text-white mt-0.5 block">
+                  {{ marine.wave_period ? marine.wave_period + ' s' : '--' }}
+                </span>
+              </div>
+              <div>
+                <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_direction') }}</span>
+                <span class="text-xs font-black text-white mt-0.5 block">
+                  {{ marine.wave_direction !== null ? marine.wave_direction + '° ' + getCompassDir(marine.wave_direction) : '--' }}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Waves: Moto Ondoso -->
-        <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col justify-between">
+        <!-- Live Harmonic Tide Wave -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <Waves class="w-4 h-4 text-sky-400" />
-              <span class="text-xs font-bold text-white uppercase tracking-wider">{{ t('wave_conditions') }}</span>
+              <h2 class="text-xs font-bold text-white uppercase tracking-wider">{{ t('live_tide') }}</h2>
             </div>
-            <span class="text-[9px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 font-semibold border border-sky-400/20">
-              Open-Meteo
-            </span>
-          </div>
-          <div class="grid grid-cols-3 gap-2 text-center bg-black/30 p-2.5 rounded-xl border border-white/5">
-            <div>
-              <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_height') }}</span>
-              <span class="text-lg font-black text-white mt-0.5 block">
-                {{ marine?.wave_height !== null && marine?.wave_height !== undefined ? marine.wave_height : 0.62 }} m
-              </span>
-            </div>
-            <div>
-              <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_period') }}</span>
-              <span class="text-lg font-black text-white mt-0.5 block">
-                {{ marine?.wave_period || 4.2 }} s
-              </span>
-            </div>
-            <div>
-              <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('wave_direction') }}</span>
-              <span class="text-xs font-black text-white mt-0.5 block">
-                {{ marine?.wave_direction || 53 }}° {{ getCompassDir(marine?.wave_direction || 53) }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Tide Box: Silky-Smooth Curve + Accurate Realtime Beacon -->
-      <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <Waves class="w-4 h-4 text-sky-400" />
-            <h2 class="text-xs font-bold text-white uppercase tracking-wider">{{ t('live_tide') }}</h2>
-          </div>
-          <span class="text-[11px] font-bold text-sky-300 bg-sky-500/15 px-2.5 py-0.5 rounded-full border border-sky-400/25">
-            0,23 m ↑ {{ t('rising') }}
-          </span>
-        </div>
-
-        <!-- 24h Harmonic Tide Curve SVG with Y-axis & Vertical Grid Lines -->
-        <div class="relative w-full h-36 sm:h-40 xl:h-44 my-2 bg-[#051426]/90 rounded-2xl p-2 border border-white/10 overflow-hidden shadow-inner">
-          <svg class="w-full h-full" viewBox="0 0 600 200">
-            <defs>
-              <linearGradient id="tideFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.38" />
-                <stop offset="70%" stop-color="#0284c7" stop-opacity="0.08" />
-                <stop offset="100%" stop-color="#0284c7" stop-opacity="0.0" />
-              </linearGradient>
-            </defs>
-
-            <!-- Y-Axis Labels (Left side) -->
-            <text x="12" y="28" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">0,2 m</text>
-            <text x="12" y="68" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">0,2 m</text>
-            <text x="12" y="118" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">0,1 m</text>
-            <text x="12" y="168" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">0,0 m</text>
-
-            <!-- Horizontal Grid Lines -->
-            <line x1="55" y1="25" x2="580" y2="25" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
-            <line x1="55" y1="65" x2="580" y2="65" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
-            <line x1="55" y1="115" x2="580" y2="115" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
-            <line x1="55" y1="165" x2="580" y2="165" stroke="rgba(255,255,255,0.15)" stroke-width="1.2" />
-
-            <!-- Vertical Dotted Grid Lines for Hours (04:00, 08:00, 12:00, 16:00, 20:00) -->
-            <line x1="142" y1="15" x2="142" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
-            <line x1="230" y1="15" x2="230" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
-            <line x1="318" y1="15" x2="318" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
-            <line x1="405" y1="15" x2="405" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
-            <line x1="492" y1="15" x2="492" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
-
-            <!-- Filled Tide Wave Area -->
-            <path :d="tideChartData.fillPath" fill="url(#tideFillGrad)" />
-
-            <!-- Continuous Harmonic Tide Curve (Silky smooth, no steps) -->
-            <path
-              :d="tideChartData.strokePath"
-              fill="none"
-              stroke="#38bdf8"
-              stroke-width="2.5"
-              stroke-linecap="round"
-            />
-
-            <!-- Realtime Indicator Marker with Pulsing Glow Halo (Stable position, no diagonal drift) -->
-            <circle
-              :cx="tideChartData.currX"
-              :cy="tideChartData.currY"
-              r="10"
-              fill="rgba(56, 189, 248, 0.25)"
-              stroke="rgba(56, 189, 248, 0.5)"
-              stroke-width="1.5"
-              class="animate-pulse"
-            />
-            <circle
-              :cx="tideChartData.currX"
-              :cy="tideChartData.currY"
-              r="5"
-              fill="#051426"
-              stroke="#38bdf8"
-              stroke-width="2.5"
-            />
-            <circle
-              :cx="tideChartData.currX"
-              :cy="tideChartData.currY"
-              r="2"
-              fill="#ffffff"
-            />
-
-            <!-- X-Axis Hours Labels (Centered with vertical lines) -->
-            <text x="142" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">04:00</text>
-            <text x="230" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">08:00</text>
-            <text x="318" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">12:00</text>
-            <text x="405" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">16:00</text>
-            <text x="492" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">20:00</text>
-          </svg>
-        </div>
-
-        <!-- Live Metrics Summary (3 Columns with Fishhook icon in center) -->
-        <div class="grid grid-cols-3 gap-2.5 text-center my-2.5 items-end">
-          <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
-            <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('next_high_tide') }}</span>
-            <span class="text-xs sm:text-sm font-black text-white mt-1 block">1 h 50 min</span>
-          </div>
-
-          <div class="bg-black/30 p-2.5 rounded-xl border border-white/5 relative">
-            <div class="flex justify-center mb-0.5">
-              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 4a2 2 0 0 1 2 2v4a6 6 0 0 1-12 0V7a3 3 0 0 1 6 0v7a2 2 0 0 1-4 0" />
-              </svg>
-            </div>
-            <span class="text-[9px] text-white/50 block font-semibold uppercase">{{ t('current_tide') }}</span>
-            <span class="text-base sm:text-lg font-black text-white mt-0.5 block">0,23 m</span>
-            <span class="text-[10px] text-sky-300 font-bold block mt-0.5">
-              <span class="inline-block px-1 rounded bg-sky-500/20 text-sky-300 mr-0.5">↑</span> {{ t('rising') }}
+            <span class="text-[11px] font-bold text-sky-300 bg-sky-500/15 px-2.5 py-0.5 rounded-full border border-sky-400/25">
+              {{ tideChartData.currVal }} m
             </span>
           </div>
 
-          <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
-            <span class="text-[9px] text-white/50 block font-semibold uppercase">Corrente marea</span>
-            <span class="text-xs sm:text-sm font-black text-white mt-1 block">3 cm/h</span>
+          <!-- 24h Harmonic Tide Curve SVG with Y-axis & Vertical Grid Lines -->
+          <div class="relative w-full h-36 sm:h-40 xl:h-44 my-2 bg-[#051426]/90 rounded-2xl p-2 border border-white/10 overflow-hidden shadow-inner">
+            <svg class="w-full h-full" viewBox="0 0 600 200">
+              <defs>
+                <linearGradient id="tideFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.38" />
+                  <stop offset="70%" stop-color="#0284c7" stop-opacity="0.08" />
+                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              <!-- Y-Axis Labels (Left side) -->
+              <text x="12" y="28" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">+0,3 m</text>
+              <text x="12" y="75" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">+0,2 m</text>
+              <text x="12" y="120" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace">+0,1 m</text>
+              <text x="12" y="168" font-size="9.5" fill="rgba(255,255,255,0.45)" font-family="monospace"> 0,0 m</text>
+
+              <!-- Horizontal Grid Lines -->
+              <line x1="55" y1="25" x2="580" y2="25" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+              <line x1="55" y1="72" x2="580" y2="72" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+              <line x1="55" y1="118" x2="580" y2="118" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3 3" />
+              <line x1="55" y1="165" x2="580" y2="165" stroke="rgba(255,255,255,0.15)" stroke-width="1.2" />
+
+              <!-- Vertical Dotted Grid Lines for Hours (04:00, 08:00, 12:00, 16:00, 20:00) -->
+              <line x1="142" y1="15" x2="142" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+              <line x1="230" y1="15" x2="230" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+              <line x1="318" y1="15" x2="318" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+              <line x1="405" y1="15" x2="405" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+              <line x1="492" y1="15" x2="492" y2="165" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3" />
+
+              <!-- Filled Tide Wave Area -->
+              <path :d="tideChartData.fillPath" fill="url(#tideFillGrad)" />
+
+              <!-- Continuous Harmonic Tide Curve -->
+              <path
+                :d="tideChartData.strokePath"
+                fill="none"
+                stroke="#38bdf8"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              />
+
+              <!-- Realtime Indicator Marker with Pulsing Glow Halo -->
+              <circle
+                :cx="tideChartData.currX"
+                :cy="tideChartData.currY"
+                r="10"
+                fill="rgba(56, 189, 248, 0.25)"
+                stroke="rgba(56, 189, 248, 0.5)"
+                stroke-width="1.5"
+                class="animate-pulse"
+              />
+              <circle
+                :cx="tideChartData.currX"
+                :cy="tideChartData.currY"
+                r="5"
+                fill="#051426"
+                stroke="#38bdf8"
+                stroke-width="2.5"
+              />
+              <circle
+                :cx="tideChartData.currX"
+                :cy="tideChartData.currY"
+                r="2"
+                fill="#ffffff"
+              />
+
+              <!-- X-Axis Hours Labels -->
+              <text x="142" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">04:00</text>
+              <text x="230" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">08:00</text>
+              <text x="318" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">12:00</text>
+              <text x="405" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">16:00</text>
+              <text x="492" y="185" font-size="9.5" fill="rgba(255,255,255,0.5)" font-family="monospace" text-anchor="middle">20:00</text>
+            </svg>
           </div>
         </div>
-
-        <!-- Low and High Tide Table -->
-        <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/5">
-          <div class="bg-black/25 p-2.5 rounded-xl border border-white/5">
-            <div class="flex items-center gap-1.5 mb-1.5">
-              <ArrowDown class="w-3 h-3 text-amber-400" />
-              <span class="text-[9px] font-bold text-amber-300 uppercase">{{ t('low_tide') }}</span>
-            </div>
-            <div class="space-y-1 text-xs font-mono">
-              <div class="flex justify-between text-white/80">
-                <span>07:04</span>
-                <span class="font-bold text-white">0,02 m</span>
-              </div>
-              <div class="flex justify-between text-white/80">
-                <span>20:54</span>
-                <span class="font-bold text-white">0,08 m</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-black/25 p-2.5 rounded-xl border border-white/5">
-            <div class="flex items-center gap-1.5 mb-1.5">
-              <ArrowUp class="w-3 h-3 text-emerald-400" />
-              <span class="text-[9px] font-bold text-emerald-300 uppercase">{{ t('high_tide') }}</span>
-            </div>
-            <div class="space-y-1 text-xs font-mono">
-              <div class="flex justify-between text-white/80">
-                <span>00:48</span>
-                <span class="font-bold text-white">0,19 m</span>
-              </div>
-              <div class="flex justify-between text-white/80">
-                <span>14:10</span>
-                <span class="font-bold text-white">0,26 m</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </template>
     </div>
 
 

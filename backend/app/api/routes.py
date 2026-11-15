@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Query, HTTPException, Request
@@ -11,16 +12,28 @@ from app.models.schemas import (
     ReverseGeocodeResult,
     AutoLocationResponse
 )
-from app.services.solunar import calculate_solunar_data, get_moon_phase_info
-from app.services.weather import fetch_weather_forecast, get_weather_description, kmh_to_knots
+from app.services.solunar import calculate_solunar_data, get_moon_phase_info, estimate_solar_tz_offset
+from app.services.weather import fetch_weather_forecast, get_weather_description, kmh_to_knots, generate_offline_weather_fallback
 from app.services.marine import fetch_marine_forecast
 from app.services.scoring import compute_24h_activity, get_rating_label
 from app.services.geocoding import search_spots, reverse_geocode, get_auto_location
 
 router = APIRouter(prefix="/api/v1", tags=["Forecast & Search"])
+logger = logging.getLogger(__name__)
 
 DAY_NAMES_IT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 MONTH_NAMES_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+
+MOON_ICONS = {
+    "Luna Nuova": "new-moon",
+    "Luna Crescente": "waxing-crescent",
+    "Primo Quarto": "first-quarter",
+    "Gibbosa Crescente": "waxing-gibbous",
+    "Luna Piena": "full-moon",
+    "Gibbosa Calante": "waning-gibbous",
+    "Ultimo Quarto": "last-quarter",
+    "Luna Calante": "waning-crescent"
+}
 
 
 @router.get("/search", response_model=List[SpotSearchItem])
@@ -57,8 +70,6 @@ async def auto_detect_location(request: Request):
     return result
 
 
-
-
 @router.get("/forecast", response_model=ForecastResponse)
 async def get_forecast(
     lat: float = Query(..., ge=-90.0, le=90.0, description="Latitude"),
@@ -77,31 +88,43 @@ async def get_forecast(
     weather_task = asyncio.create_task(fetch_weather_forecast(lat, lon, forecast_days=7, past_days=1))
     marine_task = asyncio.create_task(fetch_marine_forecast(lat, lon, forecast_days=7))
 
-    weather_raw, marine_data = await asyncio.gather(weather_task, marine_task, return_exceptions=True)
+    weather_res, marine_res = await asyncio.gather(weather_task, marine_task, return_exceptions=True)
 
-    if isinstance(weather_raw, Exception):
-        raise HTTPException(status_code=502, detail=f"Failed to fetch weather data: {str(weather_raw)}")
+    is_offline = False
+    if isinstance(weather_res, Exception) or not isinstance(weather_res, dict):
+        # Offline resilient fallback: compute solunar with offline weather
+        weather_raw = generate_offline_weather_fallback(lat, lon, target_date)
+        is_offline = True
+    else:
+        weather_raw = weather_res
 
-    if isinstance(marine_data, Exception):
-        marine_data = None
+    marine_data, marine_hourly = (marine_res if (not isinstance(marine_res, Exception) and isinstance(marine_res, tuple)) else (None, {}))
 
-    # Calculate local solunar data
-    solunar_data = calculate_solunar_data(lat, lon, target_date)
+    # Dynamic Timezone resolution
+    utc_offset_sec = weather_raw.get("utc_offset_seconds")
+    if utc_offset_sec is not None:
+        tz_offset_hours = float(utc_offset_sec) / 3600.0
+    else:
+        tz_offset_hours = estimate_solar_tz_offset(lon)
+
+    timezone_str = weather_raw.get("timezone", "UTC")
+
+    # Local solunar calculation bounded strictly within target_date
+    solunar_data = calculate_solunar_data(lat, lon, target_date, tz_offset_hours=tz_offset_hours)
 
     hourly_weather = weather_raw.get("hourly", {})
-    wave_height = marine_data.wave_height if marine_data else None
 
-    # Compute 24h activity curve
+    # Compute 24h activity curve with continuous scoring & hourly marine mapping
     hourly_activities = compute_24h_activity(
         lat=lat,
         lon=lon,
         target_date=target_date,
         solunar_data=solunar_data,
         weather_hourly=hourly_weather,
-        marine_wave_height=wave_height
+        marine_hourly=marine_hourly,
+        tz_offset_hours=tz_offset_hours
     )
 
-    # Compute daily score (mean of top feeding hours)
     scores = [h.score for h in hourly_activities]
     daily_score = round(sum(scores) / len(scores)) if scores else 50
     daily_rating = get_rating_label(daily_score)
@@ -140,7 +163,10 @@ async def get_forecast(
         hourly_activity=hourly_activities,
         solunar=solunar_data,
         weather_current=weather_current,
-        marine=marine_data
+        marine=marine_data,
+        is_offline=is_offline,
+        utc_offset_hours=tz_offset_hours,
+        timezone=timezone_str
     )
 
 
@@ -152,11 +178,22 @@ async def get_forecast_summary(
 ):
     try:
         weather_raw = await fetch_weather_forecast(lat, lon, forecast_days=days, past_days=1)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch forecast summary: {str(e)}")
+    except Exception as exc:
+        logger.info("External weather forecast failed, using offline fallback: %s", exc)
+        weather_raw = generate_offline_weather_fallback(lat, lon, date.today())
+
+    # Dynamic Timezone resolution
+    utc_offset_sec = weather_raw.get("utc_offset_seconds")
+    if utc_offset_sec is not None:
+        tz_offset_hours = float(utc_offset_sec) / 3600.0
+    else:
+        tz_offset_hours = estimate_solar_tz_offset(lon)
 
     daily_data = weather_raw.get("daily", {})
     dates = daily_data.get("time", [])
+    if not dates:
+        dates = [(date.today() + timedelta(days=i)).isoformat() for i in range(days)]
+
     weather_codes = daily_data.get("weather_code", [])
     t_max = daily_data.get("temperature_2m_max", [])
     t_min = daily_data.get("temperature_2m_min", [])
@@ -165,27 +202,13 @@ async def get_forecast_summary(
     today = date.today()
     day_summaries: List[DaySummary] = []
 
-    # Map moon icons
-    moon_icons = {
-        "Luna Nuova": "new-moon",
-        "Luna Crescente": "waxing-crescent",
-        "Primo Quarto": "first-quarter",
-        "Gibbosa Crescente": "waxing-gibbous",
-        "Luna Piena": "full-moon",
-        "Gibbosa Calante": "waning-gibbous",
-        "Ultimo Quarto": "last-quarter",
-        "Luna Calante": "waning-crescent"
-    }
-
     for i, d_str in enumerate(dates):
         if i >= days + 1:
             break
         d_obj = date.fromisoformat(d_str)
-        # Skip days before yesterday
         if d_obj < today - timedelta(days=1):
             continue
 
-        # Day name
         if d_obj == today:
             day_name = "Oggi"
         elif d_obj == today + timedelta(days=1):
@@ -195,16 +218,16 @@ async def get_forecast_summary(
         else:
             day_name = DAY_NAMES_IT[d_obj.weekday()]
 
-        phase_name, illum, is_perigee = get_moon_phase_info(d_obj)
+        phase_name, illum, is_perigee = get_moon_phase_info(d_obj, tz_offset_hours)
 
-        # Unified 24h score calculation matching /forecast exactly
-        solunar_d = calculate_solunar_data(lat, lon, d_obj)
+        solunar_d = calculate_solunar_data(lat, lon, d_obj, tz_offset_hours=tz_offset_hours)
         activities_d = compute_24h_activity(
             lat=lat,
             lon=lon,
             target_date=d_obj,
             solunar_data=solunar_d,
-            weather_hourly=weather_raw.get("hourly", {})
+            weather_hourly=weather_raw.get("hourly", {}),
+            tz_offset_hours=tz_offset_hours
         )
         scores_d = [h.score for h in activities_d]
         score = round(sum(scores_d) / len(scores_d)) if scores_d else 50
@@ -218,7 +241,7 @@ async def get_forecast_summary(
             score=score,
             rating=rating,
             moon_phase_name=phase_name,
-            moon_phase_icon=moon_icons.get(phase_name, "moon"),
+            moon_phase_icon=MOON_ICONS.get(phase_name, "new-moon"),
             temp_min=t_min[i] if i < len(t_min) and t_min[i] is not None else 12.0,
             temp_max=t_max[i] if i < len(t_max) and t_max[i] is not None else 22.0,
             weather_code=weather_codes[i] if i < len(weather_codes) and weather_codes[i] is not None else 0,
